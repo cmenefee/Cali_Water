@@ -1,0 +1,140 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+Second page
+
+```{r}
+# install.packages("RPostgreSQL")
+require("RPostgreSQL")
+# create a connection
+# save the password that we can "hide" it as best as we can by collapsing it
+pw <- {"ruser"}
+
+# loads the PostgreSQL driver
+
+drv <- dbDriver("PostgreSQL")
+# creates a connection to the postgres database
+# note that "con" will be used later in each connection to the database
+con <- dbConnect(drv, dbname = "cali_water",
+                 host = "localhost", port = 5432,
+                 user = "ruser", password = pw)
+
+sql_string <- paste("SELECT * FROM lab_results WHERE (units = 'mg/L' AND county_name = 'Alameda' AND parameter LIKE '%Dissolved%')", sep="")
+Lab_results <- data.frame(dbGetQuery(con, sql_string))
+
+startstopyears <- range(format(Lab_results$sample_date, format = "%Y"))
+totalrange <- (startstopyears[1]:startstopyears[2])
+
+```
+
+
+Now let's try graphing a year or two.
+```{r}
+
+#working set is just one year
+#works 04152022
+# workingset <- data.frame(subset(Alameda_Lab_results, format(Alameda_Lab_results$sample_date, format = "%Y") == 1999))
+# 
+# png(paste("1999_","lab_results.png1", sep = ""), width = 4096*4, height = 2000)
+# par(mar = c(25, 5, 5, 5))
+# boxplot(workingset$result ~ workingset$sample_date)
+# dev.off()
+
+
+
+
+for (i in totalrange)
+{
+workingset <- data.frame(subset(Alameda_Lab_results, format(Alameda_Lab_results$sample_date, format = "%Y") == i))
+
+png(paste(i,"_","lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+par(mar = c(25, 5, 5, 5))
+boxplot(workingset$result ~ workingset$sample_date, las = 2, ylim = c(0, 800))
+dev.off()
+
+rm(workingset)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+Let's aim for more granularity.
+````{r}
+unique(Lab_results$parameter)
+png(paste("Total Dissolved Solids","_","lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+par(mar = c(25, 5, 5, 5))
+boxplot(subset(Lab_results$sample_date, Lab_results$parameter == "Total Dissolved Solids") ~ subset(Lab_results$result, Lab_results$parameter == "Total Dissolved Solids"))
+dev.off()
+
+png(paste("Dissolved Aluminum","_","lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+par(mar = c(25, 5, 5, 5))
+boxplot(subset(Lab_results$sample_date, Lab_results$parameter == "Dissolved Aluminum") ~ subset(Lab_results$result, Lab_results$parameter == "Dissolved Aluminum"))
+dev.off()
+
+png(paste("Dissolved Lead","_","lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+par(mar = c(25, 5, 5, 5))
+boxplot(subset(Lab_results$sample_date, Lab_results$parameter == "Dissolved Lead") ~ subset(Lab_results$result, Lab_results$parameter == "Dissolved Lead"))
+dev.off()
+
+png(paste("Dissolved Selenium","_","lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+par(mar = c(25, 5, 5, 5))
+boxplot(subset(Lab_results$sample_date, Lab_results$parameter == "Dissolved Selenium") ~ subset(Lab_results$result, Lab_results$parameter == "Dissolved Selenium"))
+dev.off()
+
+# for(i in unique(Lab_results$parameter))
+#   {
+#     png(paste(i,"_","lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+#     par(mar = c(25, 5, 5, 5))
+#     boxplot(subset(Lab_results$sample_date, Lab_results$parameter == i) ~ subset(Lab_results$result, Lab_results$parameter == i))
+#     dev.off()
+#   }
+
+#Does the same thing as above.
+# png(paste("Dissolved","_","lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+# par(mar = c(25, 5, 5, 5))
+# boxplot(subset(Lab_results$sample_date, Lab_results$parameter == "Dissolved Selenium") ~ subset(Lab_results$result, Lab_results$parameter == "Dissolved Selenium")*subset(Lab_results$result, Lab_results$parameter == "Dissolved Selenium"))
+# dev.off()
+````
+
+
+One year
+````{r}
+sampledate <- subset(Lab_results$sample_date, Lab_results$parameter == "Dissolved Aluminum")
+sampleresult <- subset(Lab_results$result, Lab_results$parameter == "Dissolved Aluminum")
+
+workingdate <- subset(sampledate, format(sampledate, format = "%Y") == "2005")
+workingresult <- subset(sampleresult, format(sampledate, format = "%Y") == "2005")
+
+workingdate
+workingresult
+
+
+png(paste("2005_Aluminum","_","lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+par(mar = c(25, 5, 5, 5))
+boxplot(workingdate~workingresult)
+dev.off()
+
+
+
+
+````
+
+EOF
+

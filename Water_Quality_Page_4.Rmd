@@ -1,0 +1,97 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Clean Structures
+
+```{r}
+# install.packages("RPostgreSQL")
+require("RPostgreSQL")
+# Create a connection, save the password that we can "hide" it as best as we can by collapsing it
+
+pw <- {"ruser"}
+
+# Load the PostgreSQL driver
+# Create a connection to the postgres database
+# Note: "con" will be used later in each connection to the database
+drv <- dbDriver("PostgreSQL")
+con <- dbConnect(drv, dbname = "cali_water", host = "localhost", port = 5432, user = "ruser", password = pw)
+```
+
+We're gonna wanna modify the sql_string later on so let's put it in a new chunk now.
+```{r}
+WorkingCounty <- "Alameda"
+sql_string <- paste("SELECT * FROM lab_results WHERE (units = 'mg/L' AND county_name = '",WorkingCounty,"' AND parameter LIKE '%Dissolved%')", sep="")
+Lab_results <- data.frame(dbGetQuery(con, sql_string))
+
+startstopyears <- range(format(Lab_results$sample_date, format = "%Y"))
+totalrange <- (startstopyears[1]:startstopyears[2])
+FileDirectory <- "/home/daiten/Programming/R/Projects/Water Quality Data/Results/"
+```
+
+A quick stopgap just in case there was no data found; due to an incorrect county name
+```{r}
+if(length(Lab_results) == 0)
+{
+  stop()
+  geterrormessage(print(paste("No data found")))
+}
+```
+
+Now let's do the overview for everything:
+```{r}
+for (i in totalrange)
+  {
+    workingdir <- dir.create(paste(FileDirectory, i, " Results", sep=""))
+    workingset <- data.frame(subset(Lab_results, format(Lab_results$sample_date, format = "%Y") == i))
+    png(paste(FileDirectory, i, " Results/", i,"_","MaxEverything_lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+    par(mar = c(25, 5, 5, 5))
+    try(boxplot(workingset$result ~ workingset$sample_date, las = 2, ylim = c(0, 800)))
+    dev.off()
+    
+    rm(workingset)
+  }
+```
+
+Now let's list check the individual solvents
+```{r}
+for (i in totalrange)
+  {
+    workingdir <- dir.create(paste(FileDirectory, i, " Results", sep=""))
+    workingset <- data.frame(subset(Lab_results, format(Lab_results$sample_date, format = "%Y") == i))
+    for(ii in unique(workingset$parameter))
+      {
+        png(paste(FileDirectory, i, " Results/", ii,"_",i,"_lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+        par(mar = c(25, 5, 5, 5))
+        try(boxplot(subset(workingset$sample_date, workingset$parameter == ii) ~ subset(workingset$result, workingset$parameter == ii)))
+        dev.off()
+      }
+  }
+```
+
+Now let's do a detailed analysis:
+```{r}
+startstopyears <- range(format(Lab_results$sample_date, format = "%Y"))
+totalrange <- (startstopyears[1]:startstopyears[2])
+
+for (i in unique(Lab_results$parameter))
+  {
+    for (ii in totalrange)
+      {
+        sampledate <- subset(Lab_results$sample_date, Lab_results$parameter == i)
+        sampleresult <- subset(Lab_results$result, Lab_results$parameter == i)
+        
+        workingdate <- subset(sampledate, format(sampledate, format = "%Y") == ii)
+        workingresult <- subset(sampleresult, format(sampledate, format = "%Y") == ii)
+      # png(paste(FileDirectory, i, " Results/", ii,"_",i,"_lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
+        png(paste(FileDirectory, ii, " Results/", ii,"_",i,"_lab_results.jpg", sep = ""), width = 1000, height = 1000)
+        par(mar = c(25, 5, 5, 5))
+        try(plot(workingdate, workingresult, main = paste(ii, i), xlab = "Month", ylab = "mg/L"))
+        dev.off()
+      }
+  }
+```
+
+
+

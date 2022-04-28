@@ -1,0 +1,265 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Lets get the libraries set up
+````{r}
+#install.packages("tmap")
+#library(tmap)
+
+
+````
+
+
+
+Connect to the DB
+````{r}
+# install.packages("RPostgreSQL")
+require("RPostgreSQL")
+# create a connection
+# save the password that we can "hide" it as best as we can by collapsing it
+pw <- {"ruser"}
+
+
+
+# loads the PostgreSQL driver
+
+drv <- dbDriver("PostgreSQL")
+# creates a connection to the postgres database
+# note that "con" will be used later in each connection to the database
+con <- dbConnect(drv, dbname = "cali_water",
+                 host = "localhost", port = 5432,
+                 user = "ruser", password = pw)
+
+````
+
+
+
+Let's view the tables by showing all tables that are accessible by the current user:
+
+````{r}
+sqlquerry <- dbGetQuery(con, "SELECT * FROM information_schema.tables WHERE table_schema = 'public';")
+#sqlquerry
+table_names <- array(sqlquerry['table_name'])
+#table_names
+
+#table_names[1,1]
+#table_names[2,1]
+#table_names[3,1]
+#table_names[4,1]
+
+table_names_list <- c()
+for (e in table_names[,1])
+  {
+    table_names_list <- append(table_names_list, e)
+  }
+
+table_names_list
+````
+
+Let's explor each of these tables. Finding unique items and ranges
+
+````{r}
+# stations <- data.frame(dbGetQuery(con, "SELECT * FROM stations"))
+# station_sample <- stations[sample(1:nrow(stations), 10), ]
+# station_sample
+# 
+lab_results <- data.frame(dbGetQuery(con, "SELECT * FROM lab_results"))
+lab_results_sample <- lab_results[sample(1:nrow(lab_results), 10), ]
+lab_results_sample
+# 
+# field_results <- data.frame(dbGetQuery(con, "SELECT * FROM field_results"))
+# field_results_sample <- field_results[sample(1:nrow(field_results), 10), ]
+# field_results_sample
+# 
+# period_of_record <- data.frame(dbGetQuery(con, "SELECT * FROM period_of_record"))
+# period_of_record_sample <- period_of_record[sample(1:nrow(period_of_record), 10), ]
+# period_of_record_sample
+````
+
+
+
+Unique counties: 
+````{r}
+unique_counties <- unique(lab_results['county_name'])
+unique_counties
+````
+
+
+Let's look at Alameda
+````{r}
+Alameda <- data.frame(dbGetQuery(con, "SELECT * FROM stations WHERE county_name = 'Alameda'"))
+Alameda_sample <- Alameda[sample(1:nrow(Alameda), 10), ]
+Alameda_sample
+
+unique(Alameda['station_name'])
+````
+
+Lab Results for Alameda
+````{r}
+Alameda_Lab_results <- data.frame(dbGetQuery(con, "SELECT * FROM lab_results WHERE (units = 'mg/L' AND county_name = 'Alameda' AND parameter LIKE '%Dissolved%')"))
+Alameda_Lab_results_sample <- Alameda_Lab_results[sample(1:nrow(Alameda_Lab_results), 10), ]
+Alameda_Lab_results_sample
+
+unique(Alameda_Lab_results['station_name'])
+unique(Alameda_Lab_results['station_id'])
+unique(Alameda_Lab_results['units'])
+unique(Alameda_Lab_results['parameter'])
+
+length(subset(Alameda_Lab_results, Alameda_Lab_results['units'] == "mg/L"))
+mgl <- subset(Alameda_Lab_results, Alameda_Lab_results$units == "mg/L")
+mgl
+````
+
+Let's boxplot
+````{r}
+Alameda_Lab_results_sample
+png("rplot_SAMPLE.png", width = 4096, height = 2000)
+boxplot(Alameda_Lab_results_sample$result ~ Alameda_Lab_results_sample$parameter, las = 2)
+dev.off()
+
+````
+
+And now with the full set
+
+````{r}
+Fresno_Lab_results <- data.frame(dbGetQuery(con, "SELECT * FROM lab_results WHERE (units = 'mg/L' AND county_name = 'Fresno' AND parameter LIKE '%Dissolved%')"))
+
+Fresno_Lab_results_subset <- subset(Fresno_Lab_results, Fresno_Lab_results$parameter == "Total Dissolved Solids")
+#Fresno_Lab_results_subset <- subset(Fresno_Lab_results, Fresno_Lab_results$units == "mg/L")
+boxplot(Fresno_Lab_results_subset$result ~ Fresno_Lab_results_subset$parameter, ylim = c(0,500))
+
+png("frezno_lab_results.png", width = 4096, height = 4096)
+par(mar = c(25, 5, 5, 5))
+boxplot(Fresno_Lab_results$result ~ Fresno_Lab_results$parameter, las = 2, ylim = c(0, 8500))
+dev.off()
+
+png("frezno_lab_results_log.png", width = 4096, height = 4096)
+par(mar = c(25, 5, 5, 5))
+boxplot(log(Fresno_Lab_results$result) ~ Fresno_Lab_results$parameter, las = 2, ylim = c(0, 4500))
+dev.off()
+````
+What about time?
+
+````{r}
+
+range(Alameda_Lab_results$sample_date)
+
+
+````
+
+
+
+Let's make a for loop to create a string for the db sql requests
+
+
+````{r}
+lab_results <- data.frame(dbGetQuery(con, "SELECT * FROM lab_results"))
+unique_counties <- unique(lab_results['county_name'])
+````
+
+
+````{r}
+for (i in unique_counties$county_name)
+  {
+    sql_string <- paste("SELECT * FROM lab_results WHERE (units = 'mg/L' AND county_name = '", i, "' AND parameter LIKE '%Dissolved%')", sep="")
+    Alameda_Lab_results <- data.frame(dbGetQuery(con, sql_string))
+
+    png(paste(i,"_","lab_results.png", sep = ""), width = 4096, height = 1000)
+    par(mar = c(25, 5, 5, 5))
+    boxplot(Alameda_Lab_results$result ~ Alameda_Lab_results$parameter, las = 2, ylim = c(0, 2000))
+    dev.off()
+    
+    # png(paste(i,"_","lab_results_log.png", sep = ""), width = 4096, height = 1000)
+    # par(mar = c(25, 5, 5, 5))
+    # boxplot(log(Alameda_Lab_results$result) ~ Alameda_Lab_results$parameter, las = 2, ylim = c(0, 2000))
+    # dev.off()
+    
+    rm(sql_string)
+    rm(Alameda_Lab_results)
+  }
+
+````
+
+
+
+
+
+Let's look at time series, again
+````{r}
+
+sql_string <- paste("SELECT * FROM lab_results WHERE (units = 'mg/L' AND county_name = 'Alameda' AND parameter LIKE '%Dissolved%')", sep="")
+Alameda_Lab_results <- data.frame(dbGetQuery(con, sql_string))
+
+test_date <- as.Date(Alameda_Lab_results$sample_date[9])
+print(as.Date(Alameda_Lab_results$sample_date[9])) 
+print(as.Date(Alameda_Lab_results$sample_date[7])) 
+print(as.Date(Alameda_Lab_results$sample_date[3])) 
+
+typeof(Alameda_Lab_results$sample_date)
+class(Alameda_Lab_results$sample_date)
+attributes(Alameda_Lab_results$sample_date)
+
+somedate <- as.Date(Alameda_Lab_results$sample_date[9], format = "%y-%m-%d")
+format(somedate, format="%Y")
+
+# Alameda_Lab_results$sample_date[format(somedate, format="%Y") >= 1970 && format(somedate, format="%Y") <= 1979]
+# theseventies <- Alameda_Lab_results$sample_date[format(Alameda_Lab_results$sample_date, format="%Y") == range(1970:1979)]
+# theseventies <- subset(Alameda_Lab_results, format(Alameda_Lab_results$sample_date, format="%Y") = range(1970:1979))
+# whatsthis<-Alameda_Lab_results$sample_date[range(1970:1979)]
+# subset(Alameda_Lab_results, )
+# theseventies <- Alameda_Lab_results[subset(Alameda_Lab_results, Alameda_Lab_results$sample_date[as.character(format(Alameda_Lab_results$sample_date, format = "%Y") == "1971")]
+# theseventies <- data.frame(subset(Alameda_Lab_results, Alameda_Lab_results$sample_date[as.character(format(Alameda_Lab_results$sample_date, format = "%Y"))] == 1971))
+# theseventies <- subset(Alameda_Lab_results$sample_date, Alameda_Lab_results$sample_date[format(Alameda_Lab_results$sample_date, format = "%Y")] == 1971)
+
+
+
+####WORKS####
+#theseventies <- subset(Alameda_Lab_results, format(Alameda_Lab_results$sample_date, format = "%Y") == 1970)
+#############
+
+
+
+startstopyears <- range(format(Alameda_Lab_results$sample_date, format = "%Y"))
+totalrange <- (startstopyears[1]:startstopyears[2])
+workingset <- data.frame(subset(Alameda_Lab_results, format(Alameda_Lab_results$sample_date, format = "%Y") == 1983))
+
+#for (i in seq(startstopyears[1]:startstopyears[2]))
+for (i in totalrange)  
+  {
+    workingset <- data.frame(subset(Alameda_Lab_results, format(Alameda_Lab_results$sample_date, format = "%Y") == 1983))
+    print(paste("Working on: ", i))
+    rm(workingset)
+  }
+
+````
+
+
+Getting a bit cluttered, let's start anew.
+````{r}
+# install.packages("RPostgreSQL")
+require("RPostgreSQL")
+# create a connection
+# save the password that we can "hide" it as best as we can by collapsing it
+pw <- {"ruser"}
+
+
+
+# loads the PostgreSQL driver
+
+drv <- dbDriver("PostgreSQL")
+# creates a connection to the postgres database
+# note that "con" will be used later in each connection to the database
+con <- dbConnect(drv, dbname = "cali_water",
+                 host = "localhost", port = 5432,
+                 user = "ruser", password = pw)
+
+sql_string <- paste("SELECT * FROM lab_results WHERE (units = 'mg/L' AND county_name = 'Alameda' AND parameter LIKE '%Dissolved%')", sep="")
+Alameda_Lab_results <- data.frame(dbGetQuery(con, sql_string))
+startstopyears <- range(format(Alameda_Lab_results$sample_date, format = "%Y"))
+totalrange <- (startstopyears[1]:startstopyears[2])
+workingset <- data.frame(subset(Alameda_Lab_results, format(Alameda_Lab_results$sample_date, format = "%Y") == 1983))
+
+````
+
