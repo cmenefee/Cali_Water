@@ -1,4 +1,4 @@
-install.packages("RPostgreSQL")
+# install.packages("RPostgreSQL")
 require("RPostgreSQL")
 
 # Load the PostgreSQL driver, create a connection to the postgres database
@@ -31,7 +31,13 @@ for(i in unique(Lab_Results$county_name))
         
         png(paste(FileDirectory, i, "_",ii,"_lab_results.jpg", sep = ""), width = 1000, height = 1000)
         par(mar = c(25, 5, 5, 5))
-        try(plot(workingparameter$sample_date, workingparameter$result, main = paste(ii, "Results"), xlab = "Time", ylab = "mg/L", ylim = range(workingparameter$result)))
+        # try(plot(workingparameter$sample_date, workingparameter$result, main = paste(ii, "Results"), xlab = "Time", ylab = "mg/L", ylim = range(workingparameter$result)))
+        try(plot(workingparameter$sample_date, workingparameter$result, 
+                 main = paste(ii, "Results"), 
+                 xlab = "Time", 
+                 ylab = "mg/L", 
+                 ylim = range(min(workingparameter$result, na.rm = TRUE):max(workingparameter$result, na.rm = TRUE)), 
+                 xlim = range(workingparameter$sample_date)))
         dev.off()
       }
   }
