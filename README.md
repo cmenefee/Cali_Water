@@ -1,7 +1,8 @@
 # Cali_Water
-File with the largest serial is the current working file.
-Sample output at: https://kinokomori.info/caliwater/
+Notebooks are scraps and notes. 
+CaliWater.R is the current working consolidated attempt.
 
+Sample output at: https://kinokomori.info/caliwater/
 
  Water Quality Data
 
