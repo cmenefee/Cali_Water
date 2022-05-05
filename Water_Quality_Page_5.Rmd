@@ -1,0 +1,56 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+5th page
+```{r}
+# install.packages("RPostgreSQL")
+require("RPostgreSQL")
+# Create a connection, save the password that we can "hide" it as best as we can by collapsing it
+
+pw <- {"ruser"}
+
+# Load the PostgreSQL driver
+# Create a connection to the postgres database
+# Note: "con" will be used later in each connection to the database
+drv <- dbDriver("PostgreSQL")
+con <- dbConnect(drv, dbname = "cali_water", host = "localhost", port = 5432, user = "ruser", password = pw)
+```
+
+We're gonna wanna modify the sql_string later on so let's put it in a new chunk now.
+```{r}
+WorkingCounty <- "Sacramento"
+sql_string <- paste("SELECT * FROM lab_results WHERE (units = 'mg/L' AND county_name = '",WorkingCounty,"' AND parameter LIKE '%Dissolved%')", sep="")
+Lab_results <- data.frame(dbGetQuery(con, sql_string))
+
+startstopyears <- range(format(Lab_results$sample_date, format = "%Y"))
+totalrange <- (startstopyears[1]:startstopyears[2])
+FileDirectory <- "/home/daiten/Programming/R/Projects/Water Quality Data/Results/"
+```
+
+What else is there
+```{r}
+unique(Lab_results$parameter)
+firstsubset <- subset(Lab_results, Lab_results$parameter == "Total Dissolved Solids")
+thirdsubset <- subset(firstsubset, format(firstsubset$sample_date, format = "%Y") == "2000")
+secondsubset <- subset(firstsubset, format(firstsubset$sample_date, format = "%Y") == "2020")
+plot(firstsubset$sample_date, firstsubset$result)
+plot(secondsubset$sample_date, secondsubset$result)
+plot(thirdsubset$sample_date, thirdsubset$result)
+```
+
+
+Let's try a quick loops
+```{r}
+
+for(i in sort(unique(format(firstsubset$sample_date, format = "%Y"))))
+{
+  workingset <- subset(firstsubset, format(firstsubset$sample_date, format = "%Y") == i)
+  plot(workingset$sample_date, workingset$result, main = i, ylim = range(workingset$result))
+}
+
+
+```
+
+

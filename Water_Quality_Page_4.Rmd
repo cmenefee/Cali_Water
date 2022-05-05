@@ -21,7 +21,7 @@ con <- dbConnect(drv, dbname = "cali_water", host = "localhost", port = 5432, us
 
 We're gonna wanna modify the sql_string later on so let's put it in a new chunk now.
 ```{r}
-WorkingCounty <- "Alameda"
+WorkingCounty <- "Sacramento"
 sql_string <- paste("SELECT * FROM lab_results WHERE (units = 'mg/L' AND county_name = '",WorkingCounty,"' AND parameter LIKE '%Dissolved%')", sep="")
 Lab_results <- data.frame(dbGetQuery(con, sql_string))
 
@@ -84,7 +84,6 @@ for (i in unique(Lab_results$parameter))
         
         workingdate <- subset(sampledate, format(sampledate, format = "%Y") == ii)
         workingresult <- subset(sampleresult, format(sampledate, format = "%Y") == ii)
-      # png(paste(FileDirectory, i, " Results/", ii,"_",i,"_lab_results.jpg", sep = ""), width = 4096*4, height = 2000)
         png(paste(FileDirectory, ii, " Results/", ii,"_",i,"_lab_results.jpg", sep = ""), width = 1000, height = 1000)
         par(mar = c(25, 5, 5, 5))
         try(plot(workingdate, workingresult, main = paste(ii, i), xlab = "Month", ylab = "mg/L"))
